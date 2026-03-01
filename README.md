@@ -1,7 +1,7 @@
 # OpenFang Home Assistant Add-on
 
-[![Release](https://img.shields.io/github/v/release/RightNow-AI/openfang-homeassistant?style=flat-square)](https://github.com/RightNow-AI/openfang-homeassistant/releases)
-[![License](https://img.shields.io/github/license/RightNow-AI/openfang-homeassistant?style=flat-square)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/sebastian-greco/openfang-homeassistant?style=flat-square)](https://github.com/sebastian-greco/openfang-homeassistant/releases)
+[![License](https://img.shields.io/github/license/sebastian-greco/openfang-homeassistant?style=flat-square)](LICENSE)
 
 Run [OpenFang](https://github.com/RightNow-AI/openfang) — the open-source Agent OS — as a native Home Assistant add-on.
 
@@ -36,7 +36,7 @@ All agent data, memory, and configuration are stored persistently and survive ad
 
    **Manual**: Go to **Settings → Add-ons → Add-on Store → ⋮ → Repositories** and add:
    ```
-   https://github.com/RightNow-AI/openfang-homeassistant
+   https://github.com/sebastian-greco/openfang-homeassistant
    ```
 
 2. Find **OpenFang** in the add-on store and click **Install**.
@@ -155,11 +155,11 @@ Run this from an SSH session or the HA terminal add-on after installing OpenFang
 
 ## Contributing
 
-Issues and PRs welcome at [GitHub](https://github.com/RightNow-AI/openfang-homeassistant).
+Issues and PRs welcome at [GitHub](https://github.com/sebastian-greco/openfang-homeassistant).
 
 ---
 
 [amd64-badge]: https://img.shields.io/badge/amd64-yes-green?style=flat-square
 [aarch64-badge]: https://img.shields.io/badge/aarch64-yes-green?style=flat-square
 [repo-badge]: https://img.shields.io/badge/Add%20to%20Home%20Assistant-41BDF5?style=flat-square&logo=home-assistant&logoColor=white
-[repo-url]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FRightNow-AI%2Fopenfang-homeassistant
+[repo-url]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fsebastian-greco%2Fopenfang-homeassistant

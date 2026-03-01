@@ -12,7 +12,7 @@ This add-on runs OpenFang inside Home Assistant OS with persistent storage so yo
 
 1. **Add this repository** to Home Assistant:
    - Go to **Settings → Add-ons → Add-on Store → ⋮ → Repositories**
-   - Paste: `https://github.com/RightNow-AI/openfang-homeassistant`
+   - Paste: `https://github.com/sebastian-greco/openfang-homeassistant`
    - Click **Add**
 
 2. Find **OpenFang** in the store and click **Install**.
