@@ -182,12 +182,12 @@ start_openfang() {
 
 start_openfang
 
-# Monitor both processes with wait -n so nginx death is detected immediately,
-# even while openfang is still running.
+# Monitor both processes with wait -n -p so nginx death is detected immediately,
+# even while openfang is still running. (-p requires bash 5.1+; bookworm ships 5.2)
 while true; do
   EXITED_PID=0
   EXIT_CODE=0
-  wait -n EXITED_PID || EXIT_CODE=$?
+  wait -n -p EXITED_PID || EXIT_CODE=$?
   if [ "$SHUTTING_DOWN" = "true" ]; then
     break
   fi
