@@ -40,7 +40,7 @@ RUN set -eux; \
       echo "Checksum mismatch! expected=${EXPECTED} got=${ACTUAL}"; exit 1; \
     fi; \
     mkdir -p /tmp/openfang-extract; \
-    tar xzf /tmp/openfang.tar.gz -C /tmp/openfang-extract; \
+    tar xzf /tmp/openfang.tar.gz -C /tmp/openfang-extract --no-same-owner --no-same-permissions; \
     if [ ! -f /tmp/openfang-extract/openfang ]; then \
       echo "ERROR: 'openfang' binary not found in archive root — check upstream release layout"; \
       exit 1; \
