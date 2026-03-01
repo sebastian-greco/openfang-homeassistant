@@ -26,7 +26,7 @@ panel_icon: mdi:robot-outline
 ports:
   4200/tcp: null
 ports_description:
-  4200/tcp: OpenFang API + WebChat UI (optional direct access)
+  4200/tcp: OpenFang API + WebChat UI (requires bind_lan: true for external access)
 
 # Explicit host_network: false — we use port mapping instead.
 host_network: false
