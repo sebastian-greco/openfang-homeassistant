@@ -47,7 +47,7 @@ if [ -n "$TELEGRAM_TOKEN" ]; then
 fi
 
 # --- Export user-supplied env vars, blocking reserved keys ---
-RESERVED_KEYS="HOME PATH LD_PRELOAD LD_LIBRARY_PATH OPENFANG_LISTEN OPENFANG_HOME RUST_LOG TELEGRAM_BOT_TOKEN"
+RESERVED_KEYS="HOME TZ PATH LD_PRELOAD LD_LIBRARY_PATH OPENFANG_LISTEN OPENFANG_HOME RUST_LOG TELEGRAM_BOT_TOKEN"
 
 ENV_VARS_JSON=$(jq -c '.env_vars // []' "$OPTIONS_FILE")
 if [ "$ENV_VARS_JSON" != "[]" ]; then
@@ -67,21 +67,23 @@ if [ "$ENV_VARS_JSON" != "[]" ]; then
     done
     if [ "$blocked" = "false" ]; then
       export "$key=$value"
-      echo "[run.sh] Exported env var: $key"
+      if [[ "$key" =~ (KEY|TOKEN|SECRET|PASS|PASSWORD|CREDENTIAL) ]]; then
+        echo "[run.sh] Exported env var: $key=(redacted)"
+      else
+        echo "[run.sh] Exported env var: $key"
+      fi
     fi
   done < <(printf '%s' "$ENV_VARS_JSON" | jq -j '.[] | .name, "\u0000", (.value | tostring), "\u0000"')
 fi
 
-OPENFANG_HOME="${HOME}/.openfang"
+export OPENFANG_HOME="${HOME}/.openfang"
 mkdir -p "$OPENFANG_HOME"
 
 CONFIG_FILE="${OPENFANG_HOME}/config.toml"
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "[run.sh] Writing default config.toml to $CONFIG_FILE"
-  cat > "$CONFIG_FILE" <<TOML
+echo "[run.sh] Writing config.toml to $CONFIG_FILE"
+cat > "$CONFIG_FILE" <<TOML
 api_listen = "${BIND_ADDR}:${GATEWAY_PORT}"
 TOML
-fi
 
 write_nginx_conf() {
   cat > /etc/nginx/nginx.conf <<NGINX
@@ -112,6 +114,8 @@ http {
       proxy_set_header X-Real-IP \$remote_addr;
       proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
       proxy_set_header X-Forwarded-Proto \$scheme;
+      proxy_set_header X-Ingress-Path \$http_x_ingress_path;
+      proxy_redirect off;
       proxy_read_timeout 3600s;
       proxy_send_timeout 3600s;
     }
