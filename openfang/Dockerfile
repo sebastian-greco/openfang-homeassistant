@@ -29,20 +29,23 @@ RUN set -eux; \
       *) echo "Unsupported architecture: ${ARCH}"; exit 1 ;; \
     esac; \
     URL="https://github.com/${REPO}/releases/download/${VERSION}/openfang-${PLATFORM}.tar.gz"; \
+    # Note: sha256 is fetched from the same upstream release as the binary. This detects
+    # accidental corruption but not a fully-compromised release. Upstream release signing
+    # (cosign/sigstore) is the long-term mitigation; accepted limitation for now.
     curl -fsSL --retry 3 --retry-connrefused "${URL}" -o /tmp/openfang.tar.gz; \
     if ! curl -fsSL --retry 3 --retry-connrefused "${URL}.sha256" -o /tmp/openfang.sha256; then \
       echo "ERROR: sha256 file not found for ${URL}.sha256 — refusing to install unverified binary"; \
       exit 1; \
     fi; \
-    EXPECTED=$(cut -d' ' -f1 < /tmp/openfang.sha256); \
-    ACTUAL=$(sha256sum /tmp/openfang.tar.gz | cut -d' ' -f1); \
+    EXPECTED=$(awk '{print $1}' /tmp/openfang.sha256); \
+    ACTUAL=$(sha256sum /tmp/openfang.tar.gz | awk '{print $1}'); \
     if [ "$EXPECTED" != "$ACTUAL" ]; then \
       echo "Checksum mismatch! expected=${EXPECTED} got=${ACTUAL}"; exit 1; \
     fi; \
     mkdir -p /tmp/openfang-extract; \
     tar xzf /tmp/openfang.tar.gz -C /tmp/openfang-extract --no-same-owner --no-same-permissions; \
-    if [ ! -f /tmp/openfang-extract/openfang ]; then \
-      echo "ERROR: 'openfang' binary not found in archive root — check upstream release layout"; \
+    if [ ! -f /tmp/openfang-extract/openfang ] || [ -L /tmp/openfang-extract/openfang ]; then \
+      echo "ERROR: 'openfang' binary missing or is a symlink — rejecting archive"; \
       exit 1; \
     fi; \
     install -m 0755 /tmp/openfang-extract/openfang /usr/local/bin/openfang; \
