@@ -43,6 +43,9 @@ RUN set -eux; \
       echo "Checksum mismatch! expected=${EXPECTED} got=${ACTUAL}"; exit 1; \
     fi; \
     mkdir -p /tmp/openfang-extract; \
+    if tar -tzf /tmp/openfang.tar.gz | grep -qE '(^\.\./|^/)'; then \
+      echo 'ERROR: archive contains path-traversal members — rejecting'; exit 1; \
+    fi; \
     tar xzf /tmp/openfang.tar.gz -C /tmp/openfang-extract --no-same-owner --no-same-permissions; \
     if [ ! -f /tmp/openfang-extract/openfang ] || [ -L /tmp/openfang-extract/openfang ]; then \
       echo "ERROR: 'openfang' binary missing or is a symlink — rejecting archive"; \
