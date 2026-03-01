@@ -44,21 +44,30 @@ RUN set -eux; \
       echo "Checksum mismatch! expected=${EXPECTED} got=${ACTUAL}"; exit 1; \
     fi; \
     mkdir -p /tmp/openfang-extract; \
-    # Reject archives with path-traversal members: catch leading '../'/absolute paths
-    # AND embedded '..' components (e.g. a/../../etc/passwd). Use pipefail so a tar
-    # failure is not silently masked by grep's exit status.
-    if (set -o pipefail; tar -tzf /tmp/openfang.tar.gz | grep -qE '(^\.\./|^/|/\.\./|/\.$)'); then \
-      echo 'ERROR: archive contains path-traversal members — rejecting'; exit 1; \
+    # Reject archives with path-traversal members:
+    #  - leading '../' or absolute '/' paths
+    #  - embedded '/../', terminal '/..' or '/.' components (e.g. a/.. or a/b/..).
+    # Use pipefail so a tar failure is not silently masked by grep's exit status.
+    if (set -o pipefail; tar -tzf /tmp/openfang.tar.gz | grep -qE '(^\.\./|^/|/\.\./|/\.\.$|/\.$)'); then \
+      echo 'ERROR: archive contains path-traversal members -- rejecting'; exit 1; \
     fi; \
-    tar xzf /tmp/openfang.tar.gz -C /tmp/openfang-extract --no-same-owner --no-same-permissions --no-overwrite-dir; \
-    # Verify extracted binary is a regular file (not a symlink or hardlink pointing outside).
+    # --no-dereference: prevents symlink-in-archive writing outside the extract dir.
+    tar xzf /tmp/openfang.tar.gz -C /tmp/openfang-extract --no-same-owner --no-same-permissions --no-overwrite-dir --no-dereference; \
+    # Verify extracted binary is a regular file, not a symlink.
     if [ ! -f /tmp/openfang-extract/openfang ] || [ -L /tmp/openfang-extract/openfang ]; then \
-      echo "ERROR: 'openfang' binary missing or is a symlink — rejecting archive"; \
+      echo "ERROR: 'openfang' binary missing or is a symlink -- rejecting archive"; \
+      exit 1; \
+    fi; \
+    # Reject hardlinks: nlink > 1 means the inode is shared with another path in the image
+    # (e.g. /bin/bash), which would allow installing the wrong ELF that still passes file check.
+    NLINK=$(stat -c '%h' /tmp/openfang-extract/openfang); \
+    if [ "$NLINK" -gt 1 ]; then \
+      echo "ERROR: 'openfang' is a hardlink (nlink=${NLINK}) -- rejecting archive"; \
       exit 1; \
     fi; \
     # Confirm it is an ELF executable, not a shell script or other unexpected file type.
     if ! file /tmp/openfang-extract/openfang | grep -q 'ELF.*executable'; then \
-      echo "ERROR: 'openfang' is not an ELF executable — rejecting"; \
+      echo "ERROR: 'openfang' is not an ELF executable -- rejecting"; \
       exit 1; \
     fi; \
     install -m 0755 /tmp/openfang-extract/openfang /usr/local/bin/openfang; \
