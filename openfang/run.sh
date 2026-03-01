@@ -149,16 +149,23 @@ SHUTTING_DOWN="false"
 
 shutdown_handler() {
   SHUTTING_DOWN="true"
-  echo "[run.sh] Shutdown requested — stopping services..."
-
+  echo "[run.sh] Shutdown requested -- stopping services..."
   if [ -n "$NGINX_PID" ] && kill -0 "$NGINX_PID" 2>/dev/null; then
     kill -TERM "$NGINX_PID" 2>/dev/null || true
-    wait "$NGINX_PID" 2>/dev/null || true
+    # Wait up to 5s for graceful shutdown, then force-kill to avoid blocking add-on stop.
+    for _i in 1 2 3 4 5; do
+      kill -0 "$NGINX_PID" 2>/dev/null || break
+      sleep 1
+    done
+    kill -0 "$NGINX_PID" 2>/dev/null && kill -KILL "$NGINX_PID" 2>/dev/null || true
   fi
-
   if [ -n "$OPENFANG_PID" ] && kill -0 "$OPENFANG_PID" 2>/dev/null; then
     kill -TERM "$OPENFANG_PID" 2>/dev/null || true
-    wait "$OPENFANG_PID" 2>/dev/null || true
+    for _i in 1 2 3 4 5; do
+      kill -0 "$OPENFANG_PID" 2>/dev/null || break
+      sleep 1
+    done
+    kill -0 "$OPENFANG_PID" 2>/dev/null && kill -KILL "$OPENFANG_PID" 2>/dev/null || true
   fi
 }
 
