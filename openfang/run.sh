@@ -182,25 +182,28 @@ start_openfang() {
 
 start_openfang
 
-# Monitor both processes; exit container if nginx dies unexpectedly.
+# Monitor both processes with wait -n so nginx death is detected immediately,
+# even while openfang is still running.
 while true; do
-  # Check nginx is still alive
-  if [ "$SHUTTING_DOWN" = "false" ] && ! kill -0 "$NGINX_PID" 2>/dev/null; then
-    echo "[run.sh] ERROR: nginx died unexpectedly — exiting container"
-    kill -TERM "$OPENFANG_PID" 2>/dev/null || true
-    exit 1
-  fi
-
+  EXITED_PID=0
   EXIT_CODE=0
-  wait "$OPENFANG_PID" || EXIT_CODE=$?
-
+  wait -n EXITED_PID || EXIT_CODE=$?
   if [ "$SHUTTING_DOWN" = "true" ]; then
     break
   fi
 
-  echo "[run.sh] openfang exited (code ${EXIT_CODE}) — restarting in 3s..."
-  sleep 3
-  start_openfang
+  if [ "$EXITED_PID" = "$NGINX_PID" ]; then
+    echo "[run.sh] ERROR: nginx died unexpectedly (code ${EXIT_CODE}) — exiting container"
+    kill -TERM "$OPENFANG_PID" 2>/dev/null || true
+    wait "$OPENFANG_PID" 2>/dev/null || true
+    exit 1
+  fi
+
+  if [ "$EXITED_PID" = "$OPENFANG_PID" ]; then
+    echo "[run.sh] openfang exited (code ${EXIT_CODE}) — restarting in 3s..."
+    sleep 3
+    start_openfang
+  fi
 done
 
 echo "[run.sh] Exited cleanly."
