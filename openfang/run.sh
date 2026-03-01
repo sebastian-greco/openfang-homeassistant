@@ -8,21 +8,35 @@ if [ ! -f "$OPTIONS_FILE" ]; then
   exit 1
 fi
 
-TZNAME=$(jq -r '.timezone // "Europe/Rome"' "$OPTIONS_FILE")
-GATEWAY_PORT=$(jq -r '.gateway_port // 4200' "$OPTIONS_FILE")
+# --- umask: restrict file creation to owner-only before writing any config files ---
+umask 077
+
+TZNAME=$(jq -r '.timezone // "UTC"' "$OPTIONS_FILE")
 BIND_LAN=$(jq -r '.bind_lan // false' "$OPTIONS_FILE")
 LOG_LEVEL=$(jq -r '.log_level // "info"' "$OPTIONS_FILE")
 TELEGRAM_TOKEN=$(jq -r '.telegram_bot_token // empty' "$OPTIONS_FILE")
 
-export TZ="$TZNAME"
-ln -snf "/usr/share/zoneinfo/$TZNAME" /etc/localtime 2>/dev/null || true
-echo "$TZNAME" > /etc/timezone 2>/dev/null || true
+# --- Timezone validation ---
+if [ -f "/usr/share/zoneinfo/$TZNAME" ]; then
+  export TZ="$TZNAME"
+  ln -snf "/usr/share/zoneinfo/$TZNAME" /etc/localtime 2>/dev/null || true
+  echo "$TZNAME" > /etc/timezone 2>/dev/null || true
+else
+  echo "[run.sh] WARNING: Unknown timezone '$TZNAME', falling back to UTC"
+  TZNAME="UTC"
+  export TZ="UTC"
+  ln -snf "/usr/share/zoneinfo/UTC" /etc/localtime 2>/dev/null || true
+  echo "UTC" > /etc/timezone 2>/dev/null || true
+fi
 
 if [ "$BIND_LAN" = "true" ]; then
   BIND_ADDR="0.0.0.0"
 else
   BIND_ADDR="127.0.0.1"
 fi
+
+# Internal port is always 4200; not a user option.
+GATEWAY_PORT=4200
 
 export HOME="/data"
 export RUST_LOG="$LOG_LEVEL"
@@ -32,10 +46,26 @@ if [ -n "$TELEGRAM_TOKEN" ]; then
   export TELEGRAM_BOT_TOKEN="$TELEGRAM_TOKEN"
 fi
 
+# --- Export user-supplied env vars, blocking reserved keys ---
+RESERVED_KEYS="HOME PATH LD_PRELOAD LD_LIBRARY_PATH OPENFANG_LISTEN OPENFANG_HOME RUST_LOG TELEGRAM_BOT_TOKEN"
+
 ENV_VARS_JSON=$(jq -c '.env_vars // []' "$OPTIONS_FILE")
 if [ "$ENV_VARS_JSON" != "[]" ]; then
   while IFS= read -r -d '' key && IFS= read -r -d '' value; do
-    if [ -n "$key" ] && [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    if [ -z "$key" ]; then continue; fi
+    if ! [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      echo "[run.sh] WARNING: Skipping env var with invalid name: $key"
+      continue
+    fi
+    blocked=false
+    for reserved in $RESERVED_KEYS; do
+      if [ "$key" = "$reserved" ]; then
+        echo "[run.sh] WARNING: Skipping reserved env var: $key"
+        blocked=true
+        break
+      fi
+    done
+    if [ "$blocked" = "false" ]; then
       export "$key=$value"
       echo "[run.sh] Exported env var: $key"
     fi
@@ -64,6 +94,11 @@ events { worker_connections 256; }
 http {
   access_log off;
 
+  map \$http_upgrade \$connection_upgrade {
+    default upgrade;
+    ''      close;
+  }
+
   server {
     listen 8099;
     server_name _;
@@ -72,9 +107,11 @@ http {
       proxy_pass http://127.0.0.1:${GATEWAY_PORT};
       proxy_http_version 1.1;
       proxy_set_header Upgrade \$http_upgrade;
-      proxy_set_header Connection "upgrade";
+      proxy_set_header Connection \$connection_upgrade;
       proxy_set_header Host \$host;
       proxy_set_header X-Real-IP \$remote_addr;
+      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto \$scheme;
       proxy_read_timeout 3600s;
       proxy_send_timeout 3600s;
     }
@@ -84,6 +121,12 @@ NGINX
 }
 
 write_nginx_conf
+
+# Validate nginx config before starting
+if ! nginx -t 2>&1; then
+  echo "[run.sh] ERROR: nginx config validation failed — aborting"
+  exit 1
+fi
 
 OPENFANG_PID=""
 NGINX_PID=""
@@ -124,7 +167,15 @@ start_openfang() {
 
 start_openfang
 
+# Monitor both processes; exit container if nginx dies unexpectedly.
 while true; do
+  # Check nginx is still alive
+  if [ "$SHUTTING_DOWN" = "false" ] && ! kill -0 "$NGINX_PID" 2>/dev/null; then
+    echo "[run.sh] ERROR: nginx died unexpectedly — exiting container"
+    kill -TERM "$OPENFANG_PID" 2>/dev/null || true
+    exit 1
+  fi
+
   EXIT_CODE=0
   wait "$OPENFANG_PID" || EXIT_CODE=$?
 
