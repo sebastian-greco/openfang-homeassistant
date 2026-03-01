@@ -12,11 +12,9 @@ arch:
 
 startup: services
 boot: auto
-init: false
+init: true
 
-# Persistent storage — all OpenFang data lives here and survives updates.
-map:
-  - addon_config:rw
+# /data is always mounted by HA supervisor — no extra map entries needed.
 
 # HA Ingress — embeds the OpenFang WebChat UI inside the add-on page.
 ingress: true
