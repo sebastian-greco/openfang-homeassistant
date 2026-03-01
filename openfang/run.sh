@@ -16,7 +16,12 @@ BIND_LAN=$(jq -r '.bind_lan // false' "$OPTIONS_FILE")
 LOG_LEVEL=$(jq -r '.log_level // "info"' "$OPTIONS_FILE")
 TELEGRAM_TOKEN=$(jq -r '.telegram_bot_token // empty' "$OPTIONS_FILE")
 
-# --- Timezone validation ---
+# --- Timezone validation: reject path-traversal attempts (no '..' or leading '/') ---
+if [[ "$TZNAME" == *".."* ]] || [[ "$TZNAME" == /* ]]; then
+  echo "[run.sh] WARNING: Suspicious timezone value '$TZNAME', falling back to UTC"
+  TZNAME="UTC"
+fi
+
 if [ -f "/usr/share/zoneinfo/$TZNAME" ]; then
   export TZ="$TZNAME"
   ln -snf "/usr/share/zoneinfo/$TZNAME" /etc/localtime 2>/dev/null || true
@@ -38,6 +43,9 @@ fi
 # Internal port is always 4200; not a user option.
 GATEWAY_PORT=4200
 
+# Mark control variables readonly so user-supplied env vars cannot override them.
+readonly BIND_ADDR GATEWAY_PORT
+
 export HOME="/data"
 export RUST_LOG="$LOG_LEVEL"
 export OPENFANG_LISTEN="${BIND_ADDR}:${GATEWAY_PORT}"
@@ -47,7 +55,11 @@ if [ -n "$TELEGRAM_TOKEN" ]; then
 fi
 
 # --- Export user-supplied env vars, blocking reserved keys ---
-RESERVED_KEYS="HOME TZ PATH LD_PRELOAD LD_LIBRARY_PATH OPENFANG_LISTEN OPENFANG_HOME RUST_LOG TELEGRAM_BOT_TOKEN"
+# Use an associative array for the blocklist so it is immune to IFS manipulation.
+declare -A RESERVED_MAP
+for _k in HOME TZ PATH LD_PRELOAD LD_LIBRARY_PATH OPENFANG_LISTEN OPENFANG_HOME RUST_LOG TELEGRAM_BOT_TOKEN; do
+  RESERVED_MAP["$_k"]=1
+done
 
 ENV_VARS_JSON=$(jq -c '.env_vars // []' "$OPTIONS_FILE")
 if [ "$ENV_VARS_JSON" != "[]" ]; then
@@ -57,21 +69,20 @@ if [ "$ENV_VARS_JSON" != "[]" ]; then
       echo "[run.sh] WARNING: Skipping env var with invalid name: $key"
       continue
     fi
-    blocked=false
-    for reserved in $RESERVED_KEYS; do
-      if [ "$key" = "$reserved" ]; then
-        echo "[run.sh] WARNING: Skipping reserved env var: $key"
-        blocked=true
-        break
-      fi
-    done
-    if [ "$blocked" = "false" ]; then
-      export "$key=$value"
-      if [[ "$key" =~ (KEY|TOKEN|SECRET|PASS|PASSWORD|CREDENTIAL) ]]; then
-        echo "[run.sh] Exported env var: $key=(redacted)"
-      else
-        echo "[run.sh] Exported env var: $key"
-      fi
+    if [ "${RESERVED_MAP[$key]+set}" = "set" ]; then
+      echo "[run.sh] WARNING: Skipping reserved env var: $key"
+      continue
+    fi
+    # Guard against readonly/special bash variables that would abort under set -e.
+    if ! (export "$key=$value") 2>/dev/null; then
+      echo "[run.sh] WARNING: Cannot export env var '$key' (readonly or special) — skipping"
+      continue
+    fi
+    export "$key=$value"
+    if [[ "$key" =~ (KEY|TOKEN|SECRET|PASS|PASSWORD|CREDENTIAL) ]]; then
+      echo "[run.sh] Exported env var: $key=(redacted)"
+    else
+      echo "[run.sh] Exported env var: $key"
     fi
   done < <(printf '%s' "$ENV_VARS_JSON" | jq -j '.[] | .name, "\u0000", (.value | tostring), "\u0000"')
 fi
