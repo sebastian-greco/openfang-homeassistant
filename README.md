@@ -108,7 +108,6 @@ mkdir -p /tmp/openfang-test
 cat > /tmp/openfang-test/options.json <<'EOF'
 {
   "timezone": "Europe/Rome",
-  "gateway_port": 4200,
   "bind_lan": false,
   "log_level": "info",
   "env_vars": [
