@@ -1,8 +1,11 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-ARG OPENFANG_VERSION="latest"
+ARG OPENFANG_VERSION="v0.1.0"
 ARG TARGETARCH
+ARG BUILD_ARCH
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
@@ -17,36 +20,37 @@ RUN apt-get update \
 
 RUN set -eux; \
     REPO="RightNow-AI/openfang"; \
-    if [ "$OPENFANG_VERSION" = "latest" ]; then \
-      VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-                  | grep '"tag_name"' | head -1 | cut -d'"' -f4); \
-    else \
-      VERSION="$OPENFANG_VERSION"; \
-    fi; \
-    echo "Installing OpenFang ${VERSION}"; \
-    case "${TARGETARCH}" in \
-      amd64)  PLATFORM="x86_64-unknown-linux-gnu"  ;; \
-      arm64)  PLATFORM="aarch64-unknown-linux-gnu" ;; \
-      aarch64) PLATFORM="aarch64-unknown-linux-gnu" ;; \
-      *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+    VERSION="$OPENFANG_VERSION"; \
+    ARCH="${TARGETARCH:-$BUILD_ARCH}"; \
+    echo "Installing OpenFang ${VERSION} for arch=${ARCH}"; \
+    case "${ARCH}" in \
+      amd64)   PLATFORM="x86_64-unknown-linux-gnu"  ;; \
+      arm64|aarch64) PLATFORM="aarch64-unknown-linux-gnu" ;; \
+      *) echo "Unsupported architecture: ${ARCH}"; exit 1 ;; \
     esac; \
     URL="https://github.com/${REPO}/releases/download/${VERSION}/openfang-${PLATFORM}.tar.gz"; \
-    curl -fsSL "${URL}" -o /tmp/openfang.tar.gz; \
-    if curl -fsSL "${URL}.sha256" -o /tmp/openfang.sha256 2>/dev/null; then \
-      EXPECTED=$(cut -d' ' -f1 < /tmp/openfang.sha256); \
-      ACTUAL=$(sha256sum /tmp/openfang.tar.gz | cut -d' ' -f1); \
-      if [ "$EXPECTED" != "$ACTUAL" ]; then \
-        echo "Checksum mismatch! expected=$EXPECTED got=$ACTUAL"; exit 1; \
-      fi; \
+    curl -fsSL --retry 3 --retry-connrefused "${URL}" -o /tmp/openfang.tar.gz; \
+    if ! curl -fsSL --retry 3 --retry-connrefused "${URL}.sha256" -o /tmp/openfang.sha256; then \
+      echo "ERROR: sha256 file not found for ${URL}.sha256 — refusing to install unverified binary"; \
+      exit 1; \
     fi; \
-    tar xzf /tmp/openfang.tar.gz -C /usr/local/bin; \
-    chmod +x /usr/local/bin/openfang; \
-    rm -f /tmp/openfang.tar.gz /tmp/openfang.sha256; \
-    openfang --version
+    EXPECTED=$(cut -d' ' -f1 < /tmp/openfang.sha256); \
+    ACTUAL=$(sha256sum /tmp/openfang.tar.gz | cut -d' ' -f1); \
+    if [ "$EXPECTED" != "$ACTUAL" ]; then \
+      echo "Checksum mismatch! expected=${EXPECTED} got=${ACTUAL}"; exit 1; \
+    fi; \
+    mkdir -p /tmp/openfang-extract; \
+    tar xzf /tmp/openfang.tar.gz -C /tmp/openfang-extract; \
+    if [ ! -f /tmp/openfang-extract/openfang ]; then \
+      echo "ERROR: 'openfang' binary not found in archive root — check upstream release layout"; \
+      exit 1; \
+    fi; \
+    install -m 0755 /tmp/openfang-extract/openfang /usr/local/bin/openfang; \
+    rm -rf /tmp/openfang.tar.gz /tmp/openfang.sha256 /tmp/openfang-extract
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-EXPOSE 4200
+EXPOSE 4200 8099
 
 CMD ["/run.sh"]
