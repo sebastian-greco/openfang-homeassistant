@@ -15,10 +15,12 @@ TZNAME=$(jq -r '.timezone // "UTC"' "$OPTIONS_FILE")
 BIND_LAN=$(jq -r '.bind_lan // false' "$OPTIONS_FILE")
 LOG_LEVEL=$(jq -r '.log_level // "info"' "$OPTIONS_FILE")
 TELEGRAM_TOKEN=$(jq -r '.telegram_bot_token // empty' "$OPTIONS_FILE")
+# Strip control characters from TZNAME before using in log messages to prevent log injection.
+TZNAME_SAFE=$(printf '%s' "$TZNAME" | tr -dc '[:print:]')
 
 # --- Timezone validation: reject path-traversal attempts (no '..' or leading '/') ---
 if [[ "$TZNAME" == *".."* ]] || [[ "$TZNAME" == /* ]]; then
-  echo "[run.sh] WARNING: Suspicious timezone value '$TZNAME', falling back to UTC"
+  echo "[run.sh] WARNING: Suspicious timezone value '$TZNAME_SAFE', falling back to UTC"
   TZNAME="UTC"
 fi
 
@@ -27,7 +29,7 @@ if [ -f "/usr/share/zoneinfo/$TZNAME" ]; then
   ln -snf "/usr/share/zoneinfo/$TZNAME" /etc/localtime 2>/dev/null || true
   echo "$TZNAME" > /etc/timezone 2>/dev/null || true
 else
-  echo "[run.sh] WARNING: Unknown timezone '$TZNAME', falling back to UTC"
+  echo "[run.sh] WARNING: Unknown timezone '$TZNAME_SAFE', falling back to UTC"
   TZNAME="UTC"
   export TZ="UTC"
   ln -snf "/usr/share/zoneinfo/UTC" /etc/localtime 2>/dev/null || true
