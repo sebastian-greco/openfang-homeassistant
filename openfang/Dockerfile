@@ -37,9 +37,8 @@ RUN set -eux; \
     chmod +x /usr/local/bin/openfang; \
     rm -f /tmp/openfang.tar.gz /tmp/openfang.sha256
 
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
+COPY rootfs /
 
 EXPOSE 4200 8099
 
-CMD ["/run.sh"]
+CMD ["/init"]
