@@ -1,0 +1,7 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+# s6 finish script for nginx service.
+EXIT_CODE="${1}"
+if [ "${EXIT_CODE}" -ne 256 ] && [ "${EXIT_CODE}" -ne 0 ]; then
+    bashio::log.error "nginx exited unexpectedly (exit_code=${EXIT_CODE}), s6 will restart it"
+fi

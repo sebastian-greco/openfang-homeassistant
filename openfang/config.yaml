@@ -1,5 +1,5 @@
 name: OpenFang
-version: "0.2.0"
+version: "0.2.1"
 slug: openfang
 description: >-
   OpenFang — open-source Agent OS. One binary. Autonomous hands, 27+ LLM
@@ -40,6 +40,7 @@ options:
   log_level: "info"
   llm_provider: "github-copilot"
   llm_model: "gpt-4o"
+  env_vars: []
 
 schema:
   timezone: str
@@ -50,4 +51,4 @@ schema:
   llm_model: str?
   env_vars:
     - name: match(^[A-Za-z_][A-Za-z0-9_]*$)
-      value: str
+      value: str?
