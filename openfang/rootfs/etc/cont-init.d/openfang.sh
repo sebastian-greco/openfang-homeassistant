@@ -89,6 +89,10 @@ if [ ! -f "$API_KEY_FILE" ]; then
   bashio::log.info "Generated new OpenFang API key"
 fi
 OPENFANG_API_KEY=$(cat "$API_KEY_FILE")
+bashio::log.info "=========================================="
+bashio::log.info "OpenFang API Key: ${OPENFANG_API_KEY}"
+bashio::log.info "Enter this key in the dashboard unlock screen"
+bashio::log.info "=========================================="
 
 # --- Write config.toml ---
 CONFIG_FILE="/data/.openfang/config.toml"
