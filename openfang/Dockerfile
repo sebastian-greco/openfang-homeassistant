@@ -4,6 +4,10 @@ ARG OPENFANG_VERSION="v0.2.6"
 ARG TTYD_VERSION="1.7.7"
 ARG TARGETARCH
 
+# Allow pip installs from the in-app dependency installer on Debian bookworm.
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+ENV PIP_ROOT_USER_ACTION=ignore
+
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       bash \
@@ -24,7 +28,8 @@ RUN apt-get update \
 RUN set -eux; \
     command -v python3 >/dev/null; \
     command -v node >/dev/null || ln -sf /usr/bin/nodejs /usr/bin/node; \
-    command -v python >/dev/null || ln -sf /usr/bin/python3 /usr/bin/python
+    command -v python >/dev/null || ln -sf /usr/bin/python3 /usr/bin/python; \
+    printf '%s\n' '[global]' 'break-system-packages = true' > /etc/pip.conf
 
 RUN set -eux; \
     REPO="RightNow-AI/openfang"; \
