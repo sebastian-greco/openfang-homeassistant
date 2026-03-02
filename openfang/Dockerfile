@@ -22,7 +22,11 @@ RUN apt-get update \
 RUN set -eux; \
     REPO="RightNow-AI/openfang"; \
     VERSION="$OPENFANG_VERSION"; \
-    ARCH="${TARGETARCH:-$BUILD_ARCH}"; \
+    ARCH="${TARGETARCH:-${BUILD_ARCH:-}}"; \
+    if [ -z "$ARCH" ]; then \
+      echo "ERROR: Neither TARGETARCH nor BUILD_ARCH is set -- cannot determine architecture"; \
+      exit 1; \
+    fi; \
     echo "Installing OpenFang ${VERSION} for arch=${ARCH}"; \
     case "${ARCH}" in \
       amd64)   PLATFORM="x86_64-unknown-linux-gnu"  ;; \
