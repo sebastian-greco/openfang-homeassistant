@@ -46,9 +46,10 @@ RUN set -eux; \
     mkdir -p /tmp/openfang-extract; \
     # Reject archives with path-traversal members:
     #  - leading '../' or absolute '/' paths
+    #  - bare '..' or '.' as a full member name (e.g. '..' or '.')
     #  - embedded '/../', terminal '/..' or '/.' components (e.g. a/.. or a/b/..).
     # Use pipefail so a tar failure is not silently masked by grep's exit status.
-    if (set -o pipefail; tar -tzf /tmp/openfang.tar.gz | grep -qE '(^\.\./|^/|/\.\./|/\.\.$|/\.$)'); then \
+    if (set -o pipefail; tar -tzf /tmp/openfang.tar.gz | grep -qE '(^\.\./|^/|^\.\.$|^\.$|/\.\./|/\.\.$|/\.$)'); then \
       echo 'ERROR: archive contains path-traversal members -- rejecting'; exit 1; \
     fi; \
     # --no-dereference: prevents symlink-in-archive writing outside the extract dir.
