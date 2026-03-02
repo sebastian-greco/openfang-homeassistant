@@ -8,12 +8,23 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       bash \
       ca-certificates \
+      cargo \
       curl \
       jq \
       nginx \
+      nodejs \
+      npm \
+      python3 \
+      python3-pip \
+      rustc \
       tzdata \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    command -v python3 >/dev/null; \
+    command -v node >/dev/null || ln -sf /usr/bin/nodejs /usr/bin/node; \
+    command -v python >/dev/null || ln -sf /usr/bin/python3 /usr/bin/python
 
 RUN set -eux; \
     REPO="RightNow-AI/openfang"; \
