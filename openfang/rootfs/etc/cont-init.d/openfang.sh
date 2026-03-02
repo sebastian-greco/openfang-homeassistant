@@ -81,18 +81,27 @@ fi
 mkdir -p /data/.openfang
 
 # --- API key (OpenFang's own access token — required for non-loopback requests) ---
+# Prefer user-supplied key from add-on config, fall back to auto-generated.
+USER_API_KEY=$(jq -r '.api_key // empty' "$OPTIONS_FILE")
 API_KEY_FILE="/data/.openfang/api_key"
-if [ ! -f "$API_KEY_FILE" ]; then
-  # Generate once, persist across restarts
-  openssl rand -hex 32 > "$API_KEY_FILE"
+if [ -n "$USER_API_KEY" ]; then
+  # User explicitly set a key — use it and persist it
+  OPENFANG_API_KEY="$USER_API_KEY"
+  printf '%s' "$OPENFANG_API_KEY" > "$API_KEY_FILE"
   chmod 600 "$API_KEY_FILE"
-  bashio::log.info "Generated new OpenFang API key"
+  bashio::log.info "Using user-configured API key"
+else
+  # Auto-generate once, persist across restarts
+  if [ ! -f "$API_KEY_FILE" ]; then
+    openssl rand -hex 32 > "$API_KEY_FILE"
+    chmod 600 "$API_KEY_FILE"
+  fi
+  OPENFANG_API_KEY=$(cat "$API_KEY_FILE")
+  bashio::log.info "=========================================="
+  bashio::log.info "OpenFang API Key: ${OPENFANG_API_KEY}"
+  bashio::log.info "Tip: set 'api_key' in add-on config to avoid this prompt"
+  bashio::log.info "=========================================="
 fi
-OPENFANG_API_KEY=$(cat "$API_KEY_FILE")
-bashio::log.info "=========================================="
-bashio::log.info "OpenFang API Key: ${OPENFANG_API_KEY}"
-bashio::log.info "Enter this key in the dashboard unlock screen"
-bashio::log.info "=========================================="
 
 # --- Write config.toml ---
 CONFIG_FILE="/data/.openfang/config.toml"
