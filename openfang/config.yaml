@@ -1,5 +1,5 @@
 name: OpenFang
-version: "0.2.5"
+version: "0.2.6"
 slug: openfang
 description: >-
   OpenFang — open-source Agent OS. One binary. Autonomous hands, 27+ LLM
@@ -24,7 +24,7 @@ panel_icon: mdi:robot-outline
 
 # Port 4200 is available for direct external access but opt-in (null = disabled by default).
 ports:
-  4200/tcp: null
+  4200/tcp: 4200
 ports_description:
   4200/tcp: "OpenFang API + WebChat UI (requires bind_lan: true for external access)"
 
