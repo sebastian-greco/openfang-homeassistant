@@ -116,7 +116,7 @@ ENABLE_TERMINAL=$(jq -r '.enable_terminal // true' "$OPTIONS_FILE")
 mkdir -p /var/www/openfang
 
 if [ "$ENABLE_TERMINAL" = "true" ]; then
-  TERMINAL_SECTION='<div class="terminal-section"><div class="terminal-label">Terminal</div><iframe src="/terminal/" allowfullscreen></iframe></div>'
+  TERMINAL_SECTION='<div class="terminal-section"><div class="terminal-label">Terminal</div><iframe id="openfang-terminal" allowfullscreen></iframe></div><script>(function(){var p=window.location.pathname.replace(/\/$/, "");document.getElementById("openfang-terminal").src=p+"/terminal/";})();</script>'
 else
   TERMINAL_SECTION='<div class="no-terminal">Terminal disabled</div>'
 fi
