@@ -165,11 +165,6 @@
         openUi.href = "http://" + host + ":4200?token=%%API_KEY%%";
       }
 
-      var terminalFrame = document.getElementById("openfang-terminal");
-      if (terminalFrame) {
-        var ingressPath = window.location.pathname.replace(/\/$/, "");
-        terminalFrame.src = ingressPath + "/terminal/";
-      }
     })();
   </script>
 </body>

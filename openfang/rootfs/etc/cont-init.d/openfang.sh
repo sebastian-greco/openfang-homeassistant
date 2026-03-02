@@ -114,7 +114,7 @@ ENABLE_TERMINAL=$(jq -r '.enable_terminal // true' "$OPTIONS_FILE")
 mkdir -p /var/www/openfang
 
 if [ "$ENABLE_TERMINAL" = "true" ]; then
-  TERMINAL_SECTION='<div class="terminal-section"><div class="terminal-label">Terminal</div><iframe id="openfang-terminal" allowfullscreen></iframe></div>'
+  TERMINAL_SECTION='<div class="terminal-section"><div class="terminal-label">Terminal</div><iframe src="./terminal/" id="openfang-terminal" allowfullscreen></iframe></div>'
 else
   TERMINAL_SECTION='<div class="no-terminal">Terminal disabled</div>'
 fi
@@ -199,11 +199,15 @@ http {
     }
 
     location ^~ /terminal/ {
-      proxy_pass http://127.0.0.1:7681/;
+      proxy_pass http://127.0.0.1:7681;
       proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
       proxy_set_header Connection $connection_upgrade;
       proxy_read_timeout 3600s;
+    }
+
+    location = /terminal {
+      return 302 /terminal/;
     }
 
     location / {
