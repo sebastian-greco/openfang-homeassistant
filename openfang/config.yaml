@@ -1,5 +1,5 @@
 name: OpenFang
-version: "0.1.9"
+version: "0.2.0"
 slug: openfang
 description: >-
   OpenFang — open-source Agent OS. One binary. Autonomous hands, 27+ LLM
@@ -38,14 +38,16 @@ options:
   timezone: "UTC"
   bind_lan: false
   log_level: "info"
+  llm_provider: "github-copilot"
+  llm_model: "gpt-4o"
 
 schema:
   timezone: str
   bind_lan: bool
-  # Optional: Telegram bot token. Passed as env var TELEGRAM_BOT_TOKEN.
   telegram_bot_token: password?
   log_level: list(trace|debug|info|warn|error)?
-  # Arbitrary extra env vars forwarded to openfang start.
+  llm_provider: str?
+  llm_model: str?
   env_vars:
     - name: match(^[A-Za-z_][A-Za-z0-9_]*$)
       value: str

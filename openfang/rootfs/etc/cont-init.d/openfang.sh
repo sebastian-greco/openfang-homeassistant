@@ -83,9 +83,42 @@ mkdir -p /data/.openfang
 # --- Write config.toml ---
 CONFIG_FILE="/data/.openfang/config.toml"
 bashio::log.info "Writing config.toml to ${CONFIG_FILE}"
-cat > "$CONFIG_FILE" <<TOML
+LLM_PROVIDER=$(jq -r '.llm_provider // "github-copilot"' "$OPTIONS_FILE")
+LLM_MODEL=$(jq -r '.llm_model // "gpt-4o"' "$OPTIONS_FILE")
+
+# Determine api_key_env from provider
+case "$LLM_PROVIDER" in
+  github-copilot|copilot) KEY_ENV="GITHUB_TOKEN" ;;
+  anthropic)              KEY_ENV="ANTHROPIC_API_KEY" ;;
+  openai)                 KEY_ENV="OPENAI_API_KEY" ;;
+  gemini)                 KEY_ENV="GEMINI_API_KEY" ;;
+  groq)                   KEY_ENV="GROQ_API_KEY" ;;
+  deepseek)               KEY_ENV="DEEPSEEK_API_KEY" ;;
+  openrouter)             KEY_ENV="OPENROUTER_API_KEY" ;;
+  mistral)                KEY_ENV="MISTRAL_API_KEY" ;;
+  together)               KEY_ENV="TOGETHER_API_KEY" ;;
+  ollama|vllm|lmstudio)  KEY_ENV="" ;;
+  *)                      KEY_ENV="" ;;
+esac
+
+if [ -n "$KEY_ENV" ]; then
+  cat > "$CONFIG_FILE" <<TOML
 api_listen = "${BIND_ADDR}:${GATEWAY_PORT}"
+
+[default_model]
+provider = "${LLM_PROVIDER}"
+model = "${LLM_MODEL}"
+api_key_env = "${KEY_ENV}"
 TOML
+else
+  cat > "$CONFIG_FILE" <<TOML
+api_listen = "${BIND_ADDR}:${GATEWAY_PORT}"
+
+[default_model]
+provider = "${LLM_PROVIDER}"
+model = "${LLM_MODEL}"
+TOML
+fi
 
 # --- Write nginx config ---
 cat > /etc/nginx/nginx.conf <<NGINX
