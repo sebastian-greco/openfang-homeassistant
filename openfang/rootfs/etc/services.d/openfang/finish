@@ -1,23 +1,7 @@
-#!/usr/bin/with-contenv bashio
-# shellcheck shell=bash
-# s6 finish script for openfang service.
-#
-# $1 = exit code from the run script (or -1 if it was signalled to death)
-# $2 = exit status (signal number if killed, or 256 if died normally)
-#
-# We clean up the stale daemon.json so that on the next supervised restart
-# openfang start doesn't hit the "Another daemon already running" guard.
-
+#!/bin/sh
 EXIT_CODE="${1}"
 EXIT_SIGNAL="${2}"
-
-if [ -f /data/.openfang/daemon.json ]; then
-    bashio::log.warning "openfang exited (code=${EXIT_CODE} signal=${EXIT_SIGNAL}), removing stale daemon.json"
-    rm -f /data/.openfang/daemon.json
-fi
-
-# Exit code 256 means openfang exited cleanly with status 0.
-# Any other value means it crashed — log for diagnostics.
+rm -f /data/.openfang/daemon.json 2>/dev/null || true
 if [ "${EXIT_CODE}" -ne 256 ] && [ "${EXIT_CODE}" -ne 0 ]; then
-    bashio::log.error "openfang crashed (exit_code=${EXIT_CODE}), s6 will restart it"
+    echo "[ERROR] openfang crashed (exit_code=${EXIT_CODE} signal=${EXIT_SIGNAL}), s6 will restart it"
 fi

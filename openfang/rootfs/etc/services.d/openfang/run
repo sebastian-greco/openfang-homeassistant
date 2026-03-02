@@ -1,3 +1,7 @@
 #!/bin/sh
+export HOME=/data
+export OPENFANG_HOME=/data/.openfang
+export RUST_LOG=$(cat /var/run/s6/container_environment/RUST_LOG 2>/dev/null || echo "info")
+export OPENFANG_LISTEN=$(cat /var/run/s6/container_environment/OPENFANG_LISTEN 2>/dev/null || echo "127.0.0.1:4200")
 echo "[INFO] Starting openfang (listen: ${OPENFANG_LISTEN}, log: ${RUST_LOG})"
 exec /usr/local/bin/openfang start
