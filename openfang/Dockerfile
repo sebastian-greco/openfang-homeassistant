@@ -41,4 +41,4 @@ COPY rootfs /
 
 EXPOSE 4200 8099
 
-CMD ["/init"]
+ENTRYPOINT ["/init"]
