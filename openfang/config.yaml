@@ -38,6 +38,7 @@ options:
   timezone: "UTC"
   bind_lan: false
   log_level: "info"
+  telegram_bot_token: ""
   env_vars: []
 
 schema:
