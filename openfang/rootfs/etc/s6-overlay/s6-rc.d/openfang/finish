@@ -1,0 +1,8 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+readonly exit_code="${1}"
+readonly exit_signal="${2}"
+rm -f /data/.openfang/daemon.json 2>/dev/null || true
+if [[ "${exit_code}" -ne 0 ]] && [[ "${exit_code}" -ne 256 ]]; then
+    bashio::log.error "openfang exited unexpectedly (code=${exit_code} signal=${exit_signal})"
+fi

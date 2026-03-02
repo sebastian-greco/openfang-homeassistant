@@ -1,0 +1,4 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+bashio::log.info "Starting openfang (listen: ${OPENFANG_LISTEN}, log: ${RUST_LOG})"
+exec /usr/local/bin/openfang start
