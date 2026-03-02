@@ -1,0 +1,2 @@
+#!/command/execlineb -S0
+foreground { s6-echo "ttyd exited" }

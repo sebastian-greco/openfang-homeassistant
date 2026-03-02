@@ -1,7 +1,6 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
-
-ARG OPENFANG_VERSION="v0.2.6"
+ARG TTYD_VERSION="1.7.7"
 ARG TARGETARCH
 
 RUN apt-get update \
@@ -36,6 +35,18 @@ RUN set -eux; \
     tar xzf /tmp/openfang.tar.gz -C /usr/local/bin; \
     chmod +x /usr/local/bin/openfang; \
     rm -f /tmp/openfang.tar.gz /tmp/openfang.sha256
+
+# Install ttyd (web-based terminal) — arch-aware single static binary
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+      amd64)        TTYD_ARCH="x86_64"   ;; \
+      arm64|aarch64) TTYD_ARCH="aarch64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+    esac; \
+    curl -fsSL --retry 3 \
+      "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${TTYD_ARCH}" \
+      -o /usr/local/bin/ttyd; \
+    chmod +x /usr/local/bin/ttyd
 
 COPY rootfs /
 

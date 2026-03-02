@@ -1,5 +1,5 @@
 name: OpenFang
-version: "0.2.10"
+version: "0.2.11"
 slug: openfang
 description: >-
   OpenFang — open-source Agent OS. One binary. Autonomous hands, 27+ LLM
@@ -16,7 +16,7 @@ init: false
 
 # /data is always mounted by HA supervisor — no extra map entries needed.
 
-# HA Ingress — embeds the OpenFang WebChat UI inside the add-on page.
+# HA Ingress — serves the OpenFang landing page inside the add-on panel.
 ingress: true
 ingress_port: 8099
 panel_title: OpenFang
@@ -40,6 +40,8 @@ options:
   log_level: "info"
   llm_provider: "github-copilot"
   llm_model: "gpt-4o"
+  ha_hostname: ""
+  enable_terminal: true
 schema:
   timezone: str
   bind_lan: bool
@@ -48,6 +50,8 @@ schema:
   log_level: list(trace|debug|info|warn|error)?
   llm_provider: str?
   llm_model: str?
+  ha_hostname: str?
+  enable_terminal: bool?
   env_vars:
     - name: match(^[A-Za-z_][A-Za-z0-9_]*$)
       value: str?

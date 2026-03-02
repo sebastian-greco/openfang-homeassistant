@@ -45,6 +45,7 @@ printf '%s:%s' "$BIND_ADDR" "$GATEWAY_PORT"  > /var/run/s6/container_environment
 printf '%s' "$LOG_LEVEL"                     > /var/run/s6/container_environment/RUST_LOG
 printf '/data'                               > /var/run/s6/container_environment/HOME
 printf '/data/.openfang'                     > /var/run/s6/container_environment/OPENFANG_HOME
+printf '%s' "$(jq -r '.enable_terminal // true' "$OPTIONS_FILE")" > /var/run/s6/container_environment/ENABLE_TERMINAL
 
 if [ -n "$TELEGRAM_TOKEN" ]; then
   printf '%s' "$TELEGRAM_TOKEN" > /var/run/s6/container_environment/TELEGRAM_BOT_TOKEN
@@ -85,13 +86,11 @@ mkdir -p /data/.openfang
 USER_API_KEY=$(jq -r '.api_key // empty' "$OPTIONS_FILE")
 API_KEY_FILE="/data/.openfang/api_key"
 if [ -n "$USER_API_KEY" ]; then
-  # User explicitly set a key — use it and persist it
   OPENFANG_API_KEY="$USER_API_KEY"
   printf '%s' "$OPENFANG_API_KEY" > "$API_KEY_FILE"
   chmod 600 "$API_KEY_FILE"
   bashio::log.info "Using user-configured API key"
 else
-  # Auto-generate once, persist across restarts
   if [ ! -f "$API_KEY_FILE" ]; then
     openssl rand -hex 32 > "$API_KEY_FILE"
     chmod 600 "$API_KEY_FILE"
@@ -103,13 +102,39 @@ else
   bashio::log.info "=========================================="
 fi
 
+# --- Landing page ---
+HA_HOSTNAME=$(jq -r '.ha_hostname // empty' "$OPTIONS_FILE")
+if [ -n "$HA_HOSTNAME" ]; then
+  HOST="$HA_HOSTNAME"
+else
+  HOST=$(hostname -I 2>/dev/null | awk '{print $1}')
+  [ -z "$HOST" ] && HOST="homeassistant.local"
+fi
+
+ENABLE_TERMINAL=$(jq -r '.enable_terminal // true' "$OPTIONS_FILE")
+
+mkdir -p /var/www/openfang
+
+if [ "$ENABLE_TERMINAL" = "true" ]; then
+  TERMINAL_SECTION='<div class="terminal-section"><div class="terminal-label">Terminal</div><iframe src="/terminal/" allowfullscreen></iframe></div>'
+else
+  TERMINAL_SECTION='<div class="no-terminal">Terminal disabled</div>'
+fi
+
+sed \
+  -e "s|%%HOST%%|${HOST}|g" \
+  -e "s|%%API_KEY%%|${OPENFANG_API_KEY}|g" \
+  -e "s|%%TERMINAL_SECTION%%|${TERMINAL_SECTION}|g" \
+  /etc/nginx/landing.html > /var/www/openfang/index.html
+
+bashio::log.info "Landing page written (host=${HOST}, terminal=${ENABLE_TERMINAL})"
+
 # --- Write config.toml ---
 CONFIG_FILE="/data/.openfang/config.toml"
 bashio::log.info "Writing config.toml to ${CONFIG_FILE}"
 LLM_PROVIDER=$(jq -r '.llm_provider // "github-copilot"' "$OPTIONS_FILE")
 LLM_MODEL=$(jq -r '.llm_model // "gpt-4o"' "$OPTIONS_FILE")
 
-# Determine api_key_env from provider
 case "$LLM_PROVIDER" in
   github-copilot|copilot) KEY_ENV="GITHUB_TOKEN" ;;
   anthropic)              KEY_ENV="ANTHROPIC_API_KEY" ;;
@@ -146,7 +171,7 @@ TOML
 fi
 
 # --- Write nginx config ---
-cat > /etc/nginx/nginx.conf <<NGINX
+cat > /etc/nginx/nginx.conf <<'NGINX'
 worker_processes 1;
 error_log /dev/stderr warn;
 pid /var/run/nginx.pid;
@@ -156,7 +181,7 @@ events { worker_connections 256; }
 http {
   access_log off;
 
-  map \$http_upgrade \$connection_upgrade {
+  map $http_upgrade $connection_upgrade {
     default upgrade;
     ''      close;
   }
@@ -164,17 +189,31 @@ http {
   server {
     listen 8099;
     server_name _;
+    root /var/www/openfang;
+
+    location = / {
+      index index.html;
+      try_files /index.html =404;
+    }
+
+    location ^~ /terminal/ {
+      proxy_pass http://127.0.0.1:7681/;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+      proxy_read_timeout 3600s;
+    }
 
     location / {
-      proxy_pass http://127.0.0.1:${GATEWAY_PORT};
+      proxy_pass http://127.0.0.1:GATEWAY_PORT_PLACEHOLDER;
       proxy_http_version 1.1;
-      proxy_set_header Upgrade \$http_upgrade;
-      proxy_set_header Connection \$connection_upgrade;
-      proxy_set_header Host \$host;
-      proxy_set_header X-Real-IP \$remote_addr;
-      proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto \$scheme;
-      proxy_set_header X-Ingress-Path \$http_x_ingress_path;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+      proxy_set_header Host $host;
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+      proxy_set_header X-Ingress-Path $http_x_ingress_path;
       proxy_redirect off;
       proxy_read_timeout 3600s;
       proxy_send_timeout 3600s;
@@ -182,6 +221,8 @@ http {
   }
 }
 NGINX
+
+sed -i "s|GATEWAY_PORT_PLACEHOLDER|${GATEWAY_PORT}|g" /etc/nginx/nginx.conf
 
 if ! nginx -t 2>&1; then
   bashio::log.error "nginx config validation failed"
