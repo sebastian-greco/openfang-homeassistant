@@ -3,4 +3,4 @@ build_from:
   aarch64: ghcr.io/home-assistant/aarch64-base-debian:bookworm
 
 args:
-  OPENFANG_VERSION: "v0.2.6"
+  OPENFANG_VERSION: "v0.2.8"
