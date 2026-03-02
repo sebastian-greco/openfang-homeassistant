@@ -1,5 +1,5 @@
 name: OpenFang
-version: "0.2.9"
+version: "0.2.10"
 slug: openfang
 description: >-
   OpenFang — open-source Agent OS. One binary. Autonomous hands, 27+ LLM
@@ -40,11 +40,10 @@ options:
   log_level: "info"
   llm_provider: "github-copilot"
   llm_model: "gpt-4o"
-
-
 schema:
   timezone: str
   bind_lan: bool
+  api_key: password?
   telegram_bot_token: password?
   log_level: list(trace|debug|info|warn|error)?
   llm_provider: str?
