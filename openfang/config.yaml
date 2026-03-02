@@ -12,11 +12,9 @@ arch:
 
 startup: services
 boot: auto
-init: false
+init: true
 
-# Persistent storage — all OpenFang data lives here and survives updates.
-map:
-  - addon_config:rw
+# /data is always mounted by HA supervisor — no extra map entries needed.
 
 # HA Ingress — embeds the OpenFang WebChat UI inside the add-on page.
 ingress: true
@@ -24,11 +22,11 @@ ingress_port: 8099
 panel_title: OpenFang
 panel_icon: mdi:robot-outline
 
-# Expose the OpenFang API / WebChat directly (for external access or API clients).
+# Port 4200 is available for direct external access but opt-in (null = disabled by default).
 ports:
-  4200/tcp: 4200
+  4200/tcp: null
 ports_description:
-  4200/tcp: OpenFang API + WebChat UI
+  4200/tcp: OpenFang API + WebChat UI (requires bind_lan: true for external access)
 
 # Explicit host_network: false — we use port mapping instead.
 host_network: false
@@ -37,19 +35,19 @@ hassio_api: false
 homeassistant_api: false
 
 options:
-  timezone: "Europe/Rome"
-  gateway_port: 4200
+  timezone: "UTC"
   bind_lan: false
   log_level: "info"
+  telegram_bot_token: ""
+  env_vars: []
 
 schema:
   timezone: str
-  gateway_port: int(1,65535)
   bind_lan: bool
   # Optional: Telegram bot token. Passed as env var TELEGRAM_BOT_TOKEN.
-  telegram_bot_token: str?
+  telegram_bot_token: password?
   log_level: list(trace|debug|info|warn|error)?
   # Arbitrary extra env vars forwarded to openfang start.
   env_vars:
-    - name: "match(^[A-Za-z_][A-Za-z0-9_]*$)"
+    - name: match(^[A-Za-z_][A-Za-z0-9_]*$)
       value: str

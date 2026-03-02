@@ -27,10 +27,9 @@ This add-on runs OpenFang inside Home Assistant OS with persistent storage so yo
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `timezone` | string | `Europe/Rome` | Container timezone (e.g. `America/New_York`). |
-| `gateway_port` | int | `4200` | Port OpenFang listens on. Also mapped externally. |
-| `bind_lan` | bool | `false` | If `true`, bind to `0.0.0.0` instead of `127.0.0.1` (required if accessing the port externally without ingress). |
-| `telegram_bot_token` | string | _(optional)_ | Your Telegram bot token. Passed as `TELEGRAM_BOT_TOKEN` to OpenFang. |
+| `timezone` | string | `UTC` | Container timezone (e.g. `America/New_York`). |
+| `bind_lan` | bool | `false` | If `true`, bind to `0.0.0.0` instead of `127.0.0.1` (required if accessing port 4200 externally without ingress). |
+| `telegram_bot_token` | password | _(optional)_ | Your Telegram bot token. Passed as `TELEGRAM_BOT_TOKEN` to OpenFang. |
 | `log_level` | string | `info` | Log verbosity: `trace`, `debug`, `info`, `warn`, `error`. |
 | `env_vars` | list | `[]` | Arbitrary env vars forwarded to OpenFang at startup. |
 
@@ -38,7 +37,6 @@ This add-on runs OpenFang inside Home Assistant OS with persistent storage so yo
 
 ```yaml
 timezone: "America/New_York"
-gateway_port: 4200
 bind_lan: false
 telegram_bot_token: "123456:ABC-your-bot-token"
 log_level: "info"
@@ -114,7 +112,7 @@ A `migration_report.md` is written to `/data/.openfang/` with a summary of what 
 Two ways to access the UI:
 
 1. **HA Ingress** (recommended): Click **Open Web UI** in the add-on page. No extra ports needed.
-2. **Direct access**: If `bind_lan: true` is set, access via `http://<ha-ip>:4200` from your LAN.
+2. **Direct access**: Enable port 4200 mapping in the add-on **Network** settings (it is opt-in and disabled by default). Set `bind_lan: true` if you want to access it from another device on your LAN.
 
 ---
 
@@ -123,6 +121,7 @@ Two ways to access the UI:
 - The WebChat UI and REST API share the same port (4200) — they are part of the same OpenFang binary.
 - The ingress proxy (nginx inside the container) listens on port 8099 and proxies to OpenFang on 127.0.0.1:4200. This is only used for the HA panel embed.
 - WebSocket connections (for live chat) are proxied through with `Upgrade` headers preserved.
+- Port 4200 is **not published externally by default** — set it to a host port number in the add-on Network settings to enable direct access.
 
 ---
 
@@ -141,5 +140,6 @@ Two ways to access the UI:
 - Ensure the `[telegram]` section is configured in `config.toml`.
 
 **Port 4200 not accessible from LAN**
-- Set `bind_lan: true` in the add-on config and restart.
-- Ensure port 4200/tcp is mapped in the add-on Network settings.
+- Set `bind_lan: true` in the add-on config.
+- Enable the port mapping in the add-on **Network** settings (set it to `4200`).
+- Restart the add-on.
