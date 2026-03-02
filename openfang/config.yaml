@@ -1,5 +1,5 @@
 name: OpenFang
-version: "0.1.8"
+version: "0.1.9"
 slug: openfang
 description: >-
   OpenFang — open-source Agent OS. One binary. Autonomous hands, 27+ LLM
@@ -12,7 +12,7 @@ arch:
 
 startup: services
 boot: auto
-init: true
+init: false
 
 # /data is always mounted by HA supervisor — no extra map entries needed.
 
