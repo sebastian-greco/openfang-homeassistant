@@ -80,6 +80,16 @@ fi
 # --- Data directory ---
 mkdir -p /data/.openfang
 
+# --- API key (OpenFang's own access token — required for non-loopback requests) ---
+API_KEY_FILE="/data/.openfang/api_key"
+if [ ! -f "$API_KEY_FILE" ]; then
+  # Generate once, persist across restarts
+  openssl rand -hex 32 > "$API_KEY_FILE"
+  chmod 600 "$API_KEY_FILE"
+  bashio::log.info "Generated new OpenFang API key"
+fi
+OPENFANG_API_KEY=$(cat "$API_KEY_FILE")
+
 # --- Write config.toml ---
 CONFIG_FILE="/data/.openfang/config.toml"
 bashio::log.info "Writing config.toml to ${CONFIG_FILE}"
@@ -104,6 +114,7 @@ esac
 if [ -n "$KEY_ENV" ]; then
   cat > "$CONFIG_FILE" <<TOML
 api_listen = "${BIND_ADDR}:${GATEWAY_PORT}"
+api_key = "${OPENFANG_API_KEY}"
 
 [default_model]
 provider = "${LLM_PROVIDER}"
@@ -113,6 +124,7 @@ TOML
 else
   cat > "$CONFIG_FILE" <<TOML
 api_listen = "${BIND_ADDR}:${GATEWAY_PORT}"
+api_key = "${OPENFANG_API_KEY}"
 
 [default_model]
 provider = "${LLM_PROVIDER}"
