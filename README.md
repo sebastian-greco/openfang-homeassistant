@@ -5,7 +5,7 @@
 
 Run [OpenFang](https://github.com/RightNow-AI/openfang) — the open-source Agent OS — as a native Home Assistant add-on.
 
-**One binary. Persistent storage. Embedded WebChat UI. Telegram/Discord/Slack bridges.**
+**One binary. Persistent storage. WebChat UI on port 4200. Telegram/Discord/Slack bridges.**
 
 ---
 
@@ -41,23 +41,24 @@ All agent data, memory, and configuration are stored persistently and survive ad
 
 2. Find **OpenFang** in the add-on store and click **Install**.
 
-3. Set your LLM API key in the add-on configuration:
+3. In the **Configuration** tab, enable `bind_lan` and set your LLM API key:
    ```yaml
+   bind_lan: true
    env_vars:
      - name: ANTHROPIC_API_KEY
        value: "sk-ant-api03-..."
    ```
 
-4. Click **Start**, then **Open Web UI** to access the OpenFang dashboard.
+4. Click **Start**, then open `http://homeassistant.local:4200` in your browser.
 
 ---
 
-## Quick Start (step-by-step for testing)
+## Quick Start (step-by-step)
 
 ### Prerequisites
 
 - Home Assistant OS or Supervised installation
-- A working LLM API key (Anthropic, OpenAI, Groq, etc.)
+- A working LLM API key (Anthropic, OpenAI, Groq, GitHub Copilot, etc.)
 
 ### Steps
 
@@ -67,6 +68,7 @@ All agent data, memory, and configuration are stored persistently and survive ad
 
 3. **Configure** — in the add-on **Configuration** tab set at minimum:
    ```yaml
+   bind_lan: true
    env_vars:
      - name: ANTHROPIC_API_KEY
        value: "sk-ant-..."
@@ -76,12 +78,12 @@ All agent data, memory, and configuration are stored persistently and survive ad
 
 5. **Watch logs** — you should see:
    ```
-   [run.sh] Starting openfang (listen: 127.0.0.1:4200, log: info)
+   Starting openfang (listen: 0.0.0.0:4200, log: info)
    [ok] Kernel booted
-   [ok] API: http://127.0.0.1:4200
+   [ok] API: http://0.0.0.0:4200
    ```
 
-6. **Open Web UI** — click the button in the add-on page. The OpenFang WebChat loads embedded in HA.
+6. **Open the dashboard** — navigate to `http://homeassistant.local:4200` in your browser.
 
 7. **First run** — OpenFang will prompt you to complete setup (model selection) via the WebChat. Follow the on-screen wizard.
 
@@ -91,6 +93,21 @@ All agent data, memory, and configuration are stored persistently and survive ad
    - Restart the add-on
    - Configure the Telegram adapter in the WebChat UI
 
+### Using GitHub Copilot as LLM provider
+
+If you have a GitHub Copilot subscription, you can use it without any additional API key cost:
+
+```yaml
+bind_lan: true
+llm_provider: "github-copilot"
+llm_model: "gpt-4o"
+env_vars:
+  - name: GITHUB_TOKEN
+    value: "ghp_your_personal_access_token"
+```
+
+Create a GitHub Personal Access Token (classic) with the `copilot` scope at [github.com/settings/tokens](https://github.com/settings/tokens).
+
 ### Testing the add-on locally (Docker)
 
 You can test the Dockerfile locally before pushing to HA:
@@ -98,28 +115,26 @@ You can test the Dockerfile locally before pushing to HA:
 ```bash
 # Build for your current arch
 docker build \
-  --build-arg BUILD_FROM=debian:bookworm-slim \
+  --build-arg BUILD_FROM=ghcr.io/home-assistant/amd64-base-debian:bookworm \
   --build-arg TARGETARCH=amd64 \
   -t openfang-addon-test \
   ./openfang
-
-# Run with a fake options.json
 mkdir -p /tmp/openfang-test
 cat > /tmp/openfang-test/options.json <<'EOF'
 {
   "timezone": "Europe/Rome",
-  "bind_lan": false,
+  "bind_lan": true,
   "log_level": "info",
+  "llm_provider": "github-copilot",
+  "llm_model": "gpt-4o",
   "env_vars": [
-    {"name": "ANTHROPIC_API_KEY", "value": "sk-ant-..."}
+    {"name": "GITHUB_TOKEN", "value": "ghp_..."}  
   ]
 }
 EOF
-
 docker run -it --rm \
   -p 4200:4200 \
   -v /tmp/openfang-test:/data \
-  -e ANTHROPIC_API_KEY="sk-ant-..." \
   openfang-addon-test
 ```
 
@@ -130,15 +145,15 @@ Then open `http://localhost:4200` in your browser.
 ## Architecture
 
 ```
-HA Ingress → nginx (:8099) → OpenFang (:4200)
-                              ├── WebChat UI (/)
-                              ├── REST API (/api/*)
-                              └── WebSocket (/ws/*)
-```
+Browser → OpenFang (:4200)
+              ├── WebChat UI (/)
+              ├── REST API (/api/*)
+              └── WebSocket (/ws/*)
 
 - **No complexity**: OpenFang is a single binary. No Node.js, no Homebrew, no npm, no Python runtime.
 - **Persistent storage**: Everything in `/data/.openfang/` — survives container rebuilds.
 - **Architectures**: amd64 and aarch64. armv7 is not supported (no upstream release asset).
+- **Direct access**: Port 4200 is always mapped to the host. Set `bind_lan: true` to listen on `0.0.0.0` (accessible from your network). With `bind_lan: false` (default), OpenFang binds to `127.0.0.1` (container-only).
 
 ---
 
