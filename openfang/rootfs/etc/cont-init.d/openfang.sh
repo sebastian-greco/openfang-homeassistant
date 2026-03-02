@@ -103,20 +103,18 @@ else
 fi
 
 # --- Landing page ---
-HA_HOSTNAME=$(jq -r '.ha_hostname // empty' "$OPTIONS_FILE")
-if [ -n "$HA_HOSTNAME" ]; then
-  HOST="$HA_HOSTNAME"
-else
-  HOST=$(hostname -I 2>/dev/null | awk '{print $1}')
-  [ -z "$HOST" ] && HOST="homeassistant.local"
-fi
+HA_HOSTNAME=$(jq -r '.ha_hostname // ""' "$OPTIONS_FILE")
+HOST=$(printf '%s' "$HA_HOSTNAME" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+HOST=${HOST#http://}
+HOST=${HOST#https://}
+HOST=${HOST%%/*}
 
 ENABLE_TERMINAL=$(jq -r '.enable_terminal // true' "$OPTIONS_FILE")
 
 mkdir -p /var/www/openfang
 
 if [ "$ENABLE_TERMINAL" = "true" ]; then
-  TERMINAL_SECTION='<div class="terminal-section"><div class="terminal-label">Terminal</div><iframe id="openfang-terminal" allowfullscreen></iframe></div><script>(function(){var p=window.location.pathname.replace(/\/$/, "");document.getElementById("openfang-terminal").src=p+"/terminal/";})();</script>'
+  TERMINAL_SECTION='<div class="terminal-section"><div class="terminal-label">Terminal</div><iframe id="openfang-terminal" allowfullscreen></iframe></div>'
 else
   TERMINAL_SECTION='<div class="no-terminal">Terminal disabled</div>'
 fi
@@ -127,7 +125,11 @@ sed \
   -e "s|%%TERMINAL_SECTION%%|${TERMINAL_SECTION}|g" \
   /etc/nginx/landing.html > /var/www/openfang/index.html
 
-bashio::log.info "Landing page written (host=${HOST}, terminal=${ENABLE_TERMINAL})"
+if [ -n "$HOST" ]; then
+  bashio::log.info "Landing page written (configured host=${HOST}, terminal=${ENABLE_TERMINAL})"
+else
+  bashio::log.info "Landing page written (host=browser hostname, terminal=${ENABLE_TERMINAL})"
+fi
 
 # --- Write config.toml ---
 CONFIG_FILE="/data/.openfang/config.toml"

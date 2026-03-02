@@ -144,7 +144,7 @@
       <div class="hero-text">
         <p>WebChat UI is running on port 4200.<br>Click the button to open it with automatic authentication.</p>
       </div>
-      <a class="open-btn" href="http://%%HOST%%:4200?token=%%API_KEY%%" target="_blank" rel="noopener">
+      <a id="openfang-open-ui" class="open-btn" href="#" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
           <polyline points="15 3 21 3 21 9"/>
@@ -156,5 +156,21 @@
 
     %%TERMINAL_SECTION%%
   </div>
+  <script>
+    (function () {
+      var configuredHost = "%%HOST%%".trim();
+      var host = configuredHost || window.location.hostname;
+      var openUi = document.getElementById("openfang-open-ui");
+      if (openUi) {
+        openUi.href = "http://" + host + ":4200?token=%%API_KEY%%";
+      }
+
+      var terminalFrame = document.getElementById("openfang-terminal");
+      if (terminalFrame) {
+        var ingressPath = window.location.pathname.replace(/\/$/, "");
+        terminalFrame.src = ingressPath + "/terminal/";
+      }
+    })();
+  </script>
 </body>
 </html>
